@@ -68,6 +68,8 @@
     zoom: 4,
     antialias: true, // Improves rendering for complex layers
     preserveDrawingBuffer: true // Ensures rendering consistency
+    antialias: true, // Improves rendering for complex layers
+    preserveDrawingBuffer: true // Ensures rendering consistency
 }););
 
         let currentRasterSource = null;
@@ -165,8 +167,9 @@
                 }
 
                 // Add the first raster layer
-                // map.setPixelRatio(window.devicePixelRatio || 1);
+                
 
+$1
                     addRasterLayer(rasterFiles[0]);
                     filenameDisplay.textContent = rasterFiles[0].tif.replace('.tif', '');
 
