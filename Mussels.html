@@ -170,7 +170,7 @@
                     // Add shapefile layers here (after raster layers to ensure they appear on top)
                     map.addSource('studyArea', {
                         type: 'geojson',
-                        data: 'http://localhost:8000/studyarea/Study_Area.geojson',
+                        data: './studyarea/Study_Area.geojson',
                     });
 
                     map.addLayer({
@@ -186,7 +186,7 @@
 
                     map.addSource('musselLocations', {
                         type: 'geojson',
-                        data: 'http://localhost:8000/Mussel_Location/Mussel_Location.geojson',
+                        data: './Mussel_Location/Mussel_Location.geojson',
                     });
 
                     map.addLayer({
