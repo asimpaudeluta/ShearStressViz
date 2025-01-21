@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Joey's Visualizations</title>
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
+    <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet">
+    <style>
+        body { margin: 0; padding: 0; height: 100vh; }
+        #map { width: 100%; height: 100%; }
+        #header {
+            position: absolute;
+            z-index: 1;
+            background: #004c99;
+            color: white;
+            padding: 10px;
+            width: 100%;
+            text-align: center;
+            font-size: 1.5em;
+        }
+        #legend {
+            position: absolute;
+            top: 100px;
+            right: 10px;
+            z-index: 1000;
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            border-radius: 4px;
+            width: 20%;
+        }
+        #slider-container {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            text-align: center;
+        }
+        #slider {
+            width: 300px;
+        }
+        #filename {
+            margin-top: 5px;
+            font-size: 1em;
+        }
+    </style>
+</head>
+<body>
+    <div id="header">Mussel Concentration Vs Shear Stress Visualization</div>
+    <div id="map"></div>
+    <div id="legend">
+        <img src="Raster_files_for_Shear_Stress/legend.png" alt="Legend" style="width: 100%;">
+    </div>
+    <div id="slider-container">
+        <input id="slider" type="range">
+        <div id="filename">Loading...</div>
+    </div>
+    <script>
+        // Mapbox Access Token
+        mapboxgl.accessToken = 'pk.eyJ1IjoiYXNpbXBhdWRlbCIsImEiOiJjbTY2cGF3NHAwMm8yMmxxNnMxeG82bTdwIn0.JUCYEKLMzQFlP7X6ECC8Pw';
+
+        // Initialize Map
+        const map = new mapboxgl.Map({
+            container: 'map',
+            style: 'mapbox://styles/mapbox/light-v10',
+            center: [-95, 38],
+            zoom: 4,
+        });
+
+        let currentRasterSource = null;
+        let currentRasterLayer = null;
+
+        // Utility to convert EPSG:3857 bounds to EPSG:4326 (latitude/longitude)
+        function projectToLatLng(bounds) {
+            const R = 6378137; // Radius of Earth in meters (Web Mercator)
+            const toLatLng = ([x, y]) => {
+                const lng = (x / R) * (180 / Math.PI);
+                const lat = (Math.atan(Math.exp(y / R)) * 2 - Math.PI / 2) * (180 / Math.PI);
+                return [lng, lat];
+            };
+            return [
+                toLatLng([bounds[0], bounds[1]]), // Bottom-left
+                toLatLng([bounds[2], bounds[1]]), // Bottom-right
+                toLatLng([bounds[2], bounds[3]]), // Top-right
+                toLatLng([bounds[0], bounds[3]]), // Top-left
+            ];
+        }
+
+        // Fetch raster bounds from the JSON file
+        fetch('raster_bounds.json')
+            .then(response => response.json())
+            .then(rasterBounds => {
+                const rasterFiles = [
+                    { url: 'Raster_files_for_Shear_Stress/1_a)2year_existing.png', tif: '1_a)2year_existing.tif' },
+                    { url: 'Raster_files_for_Shear_Stress/1_b)2year_climate_change.png', tif: '1_b)2year_climate_change.tif' },
+                    { url: 'Raster_files_for_Shear_Stress/1_c)2year_landuse_change.png', tif: '1_c)2year_landuse_change.tif' },
+                    { url: 'Raster_files_for_Shear_Stress/1_d)2year_landuse_and_climate.png', tif: '1_d)2year_landuse_and_climate.tif' },
+                    { url: 'Raster_files_for_Shear_Stress/2_a)5year_existing.png', tif: '2_a)5year_existing.tif' },
+                    { url: 'Raster_files_for_Shear_Stress/2_b)5year_climate_change.png', tif: '2_b)5year_climate_change.tif' },
+                    { url: 'Raster_files_for_Shear_Stress/2_c)5year_landuse_change.png', tif: '2_c)5year_landuse_change.tif' },
+                    { url: 'Raster_files_for_Shear_Stress/2_d)5year_landuse_and_climate.png', tif: '2_d)5year_landuse_and_climate.tif' },
+                    { url: 'Raster_files_for_Shear_Stress/3_a)10year_existing.png', tif: '3_a)10year_existing.tif' },
+                    { url: 'Raster_files_for_Shear_Stress/3_b)10year_climate_change.png', tif: '3_b)10year_climate_change.tif' },
+                    { url: 'Raster_files_for_Shear_Stress/3_c)10year_landuse_change.png', tif: '3_c)10year_landuse_change.tif' },
+                    { url: 'Raster_files_for_Shear_Stress/3_d)10year_landuse_and_climate.png', tif: '3_d)10year_landuse_and_climate.tif' },
+                ];
+
+                const slider = document.getElementById('slider');
+                const filenameDisplay = document.getElementById('filename');
+
+                // Set up slider
+                slider.min = 0;
+                slider.max = rasterFiles.length - 1;
+                slider.value = 0;
+
+                function addRasterLayer(raster) {
+                    const { url, tif } = raster;
+                    const bounds = rasterBounds[tif].bounds; // Get projected bounds from JSON
+
+                    if (currentRasterLayer) {
+                        map.removeLayer(currentRasterLayer);
+                    }
+
+                    if (currentRasterSource) {
+                        map.removeSource(currentRasterSource);
+                    }
+
+                    const sourceId = `rasterSource-${Date.now()}`;
+                    const layerId = `rasterLayer-${Date.now()}`;
+
+                    // Convert bounds to Lat/Lng for Mapbox
+                    const latLngBounds = projectToLatLng(bounds);
+
+                    map.addSource(sourceId, {
+                        type: 'image',
+                        url: url,
+                        coordinates: [
+                            latLngBounds[3], // Top-left
+                            latLngBounds[2], // Top-right
+                            latLngBounds[1], // Bottom-right
+                            latLngBounds[0], // Bottom-left
+                        ],
+                    });
+
+                    map.addLayer({
+                        id: layerId,
+                        type: 'raster',
+                        source: sourceId,
+                        paint: { 'raster-opacity': 0.8 },
+                    });
+
+                    currentRasterSource = sourceId;
+                    currentRasterLayer = layerId;
+
+                    // Fit map to raster bounds
+                    map.fitBounds([latLngBounds[0], latLngBounds[2]]);
+
+                    // Ensure point layers are always on top
+                    if (map.getLayer('musselLocationsLayer')) {
+                        map.moveLayer('musselLocationsLayer');
+                    }
+                }
+
+                // Add the first raster layer
+                map.on('load', () => {
+                    addRasterLayer(rasterFiles[0]);
+                    filenameDisplay.textContent = rasterFiles[0].tif.replace('.tif', '');
+
+                    // Add shapefile layers here (after raster layers to ensure they appear on top)
+                    map.addSource('studyArea', {
+                        type: 'geojson',
+                        data: 'http://localhost:8000/studyarea/Study_Area.geojson',
+                    });
+
+                    map.addLayer({
+                        id: 'studyAreaLayer',
+                        type: 'line',
+                        source: 'studyArea',
+                        paint: {
+                            'line-color': '#0000FF',
+                            'line-width': 2,
+                            'line-dasharray': [2, 2],
+                        },
+                    });
+
+                    map.addSource('musselLocations', {
+                        type: 'geojson',
+                        data: 'http://localhost:8000/Mussel_Location/Mussel_Location.geojson',
+                    });
+
+                    map.addLayer({
+                        id: 'musselLocationsLayer',
+                        type: 'circle',
+                        source: 'musselLocations',
+                        paint: {
+                            'circle-radius': 6,
+                            'circle-color': '#FF7800',
+                            'circle-stroke-color': '#000',
+                            'circle-stroke-width': 1,
+                        },
+                    });
+
+                    // Ensure point layers are always on top
+                    map.on('data', () => {
+                        if (map.getLayer('musselLocationsLayer')) {
+                            map.moveLayer('musselLocationsLayer');
+                        }
+                    });
+
+                    // Slider interaction
+                    slider.addEventListener('input', () => {
+                        const index = parseInt(slider.value, 10);
+                        addRasterLayer(rasterFiles[index]);
+                        filenameDisplay.textContent = rasterFiles[index].tif.replace('.tif', '');
+                    });
+                });
+            })
+            .catch(error => console.error('Error loading raster bounds:', error));
+    </script>
+    <script>
+        // Add scale control to the map
+        const scale = new mapboxgl.ScaleControl({
+            maxWidth: 200,
+            unit: 'metric'
+        });
+        map.addControl(scale, 'bottom-left');
+
+        // Update the scale dynamically as the map zooms
+        map.on('zoom', () => {
+            scale._update();
+        });
+    </script>
+</body>
+</html>
