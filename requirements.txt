@@ -1,3 +1,1 @@
-# This project uses only Python standard libraries
-# Specify the Python version if needed
-python>=3.6
+# No external dependencies required as the project uses standard Python libraries.
