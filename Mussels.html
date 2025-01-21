@@ -7,8 +7,8 @@
     <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
     <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet">
     <style>
-        body { margin: 0; padding: 0; height: 100vh; overflow: hidden; }
-        #map { width: 100vw; height: 100vh; }
+        body { margin: 0; padding: 0; height: 100vh; }
+        #map { width: 100%; height: 100%; }
         #header {
             position: absolute;
             z-index: 1;
@@ -27,7 +27,7 @@
             background-color: rgba(255, 255, 255, 0.8);
             padding: 10px;
             border-radius: 4px;
-            width: 25%;
+            width: 30%;
         }
         #slider-container {
             position: absolute;
@@ -62,14 +62,13 @@
 
         // Initialize Map
         const map = new mapboxgl.Map({
-            container: 'map',
-            style: 'mapbox://styles/mapbox/light-v10',
-            center: [-95, 38],
-            zoom: 4,
-            antialias: true, // Improves rendering for complex layers
-            preserveDrawingBuffer: true // Ensures rendering consistency
-        });
-        map.setPixelRatio(window.devicePixelRatio || 1);
+    container: 'map',
+    style: 'mapbox://styles/mapbox/light-v10',
+    center: [-95, 38],
+    zoom: 4,
+    antialias: true, // Improves rendering for complex layers
+    preserveDrawingBuffer: true // Ensures rendering consistency
+}););
 
         let currentRasterSource = null;
         let currentRasterLayer = null;
@@ -87,10 +86,7 @@
                 toLatLng([bounds[2], bounds[1]]), // Bottom-right
                 toLatLng([bounds[2], bounds[3]]), // Top-right
                 toLatLng([bounds[0], bounds[3]]), // Top-left
-            ].map(([lng, lat]) => [
-                Math.max(-180, Math.min(180, lng)), // Clamp longitude
-                Math.max(-90, Math.min(90, lat)) // Clamp latitude
-            ]);
+            ];
         }
 
         // Fetch raster bounds from the JSON file
@@ -100,7 +96,16 @@
                 const rasterFiles = [
                     { url: 'Raster_files_for_Shear_Stress/1_a)2year_existing.png', tif: '1_a)2year_existing.tif' },
                     { url: 'Raster_files_for_Shear_Stress/1_b)2year_climate_change.png', tif: '1_b)2year_climate_change.tif' },
-                    // ... add all other files here ...
+                    { url: 'Raster_files_for_Shear_Stress/1_c)2year_landuse_change.png', tif: '1_c)2year_landuse_change.tif' },
+                    { url: 'Raster_files_for_Shear_Stress/1_d)2year_landuse_and_climate.png', tif: '1_d)2year_landuse_and_climate.tif' },
+                    { url: 'Raster_files_for_Shear_Stress/2_a)5year_existing.png', tif: '2_a)5year_existing.tif' },
+                    { url: 'Raster_files_for_Shear_Stress/2_b)5year_climate_change.png', tif: '2_b)5year_climate_change.tif' },
+                    { url: 'Raster_files_for_Shear_Stress/2_c)5year_landuse_change.png', tif: '2_c)5year_landuse_change.tif' },
+                    { url: 'Raster_files_for_Shear_Stress/2_d)5year_landuse_and_climate.png', tif: '2_d)5year_landuse_and_climate.tif' },
+                    { url: 'Raster_files_for_Shear_Stress/3_a)10year_existing.png', tif: '3_a)10year_existing.tif' },
+                    { url: 'Raster_files_for_Shear_Stress/3_b)10year_climate_change.png', tif: '3_b)10year_climate_change.tif' },
+                    { url: 'Raster_files_for_Shear_Stress/3_c)10year_landuse_change.png', tif: '3_c)10year_landuse_change.tif' },
+                    { url: 'Raster_files_for_Shear_Stress/3_d)10year_landuse_and_climate.png', tif: '3_d)10year_landuse_and_climate.tif' },
                 ];
 
                 const slider = document.getElementById('slider');
@@ -151,13 +156,63 @@
                     currentRasterLayer = layerId;
 
                     // Fit map to raster bounds
-                    map.fitBounds([latLngBounds[0], latLngBounds[2]], { padding: 20 });
+                    map.fitBounds([latLngBounds[0], latLngBounds[2]]);
+
+                    // Ensure point layers are always on top
+                    if (map.getLayer('musselLocationsLayer')) {
+                        map.moveLayer('musselLocationsLayer');
+                    }
                 }
 
-                map.on('load', () => {
+                // Add the first raster layer
+                map.setPixelRatio(window.devicePixelRatio || 1);
+
+$1
                     addRasterLayer(rasterFiles[0]);
                     filenameDisplay.textContent = rasterFiles[0].tif.replace('.tif', '');
 
+                    // Add shapefile layers here (after raster layers to ensure they appear on top)
+                    map.addSource('studyArea', {
+                        type: 'geojson',
+                        data: 'http://localhost:8000/studyarea/Study_Area.geojson',
+                    });
+
+                    map.addLayer({
+                        id: 'studyAreaLayer',
+                        type: 'line',
+                        source: 'studyArea',
+                        paint: {
+                            'line-color': '#0000FF',
+                            'line-width': 2,
+                            'line-dasharray': [2, 2],
+                        },
+                    });
+
+                    map.addSource('musselLocations', {
+                        type: 'geojson',
+                        data: 'http://localhost:8000/Mussel_Location/Mussel_Location.geojson',
+                    });
+
+                    map.addLayer({
+                        id: 'musselLocationsLayer',
+                        type: 'circle',
+                        source: 'musselLocations',
+                        paint: {
+                            'circle-radius': 6,
+                            'circle-color': '#FF7800',
+                            'circle-stroke-color': '#000',
+                            'circle-stroke-width': 1,
+                        },
+                    });
+
+                    // Ensure point layers are always on top
+                    map.on('data', () => {
+                        if (map.getLayer('musselLocationsLayer')) {
+                            map.moveLayer('musselLocationsLayer');
+                        }
+                    });
+
+                    // Slider interaction
                     slider.addEventListener('input', () => {
                         const index = parseInt(slider.value, 10);
                         addRasterLayer(rasterFiles[index]);
@@ -166,6 +221,19 @@
                 });
             })
             .catch(error => console.error('Error loading raster bounds:', error));
+    </script>
+    <script>
+        // Add scale control to the map
+        const scale = new mapboxgl.ScaleControl({
+            maxWidth: 200,
+            unit: 'metric'
+        });
+        map.addControl(scale, 'bottom-left');
+
+        // Update the scale dynamically as the map zooms
+        map.on('zoom', () => {
+            scale._update();
+        });
     </script>
 </body>
 </html>
