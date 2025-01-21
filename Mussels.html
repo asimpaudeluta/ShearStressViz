@@ -68,9 +68,7 @@
     zoom: 4,
     antialias: true, // Improves rendering for complex layers
     preserveDrawingBuffer: true // Ensures rendering consistency
-    antialias: true, // Improves rendering for complex layers
-    preserveDrawingBuffer: true // Ensures rendering consistency
-}););
+}});
 
         let currentRasterSource = null;
         let currentRasterLayer = null;
@@ -230,7 +228,7 @@ $1
             maxWidth: 200,
             unit: 'metric'
         });
-        map.addControl(scale, 'bottom-left');
+        map.addControl(scale);
 
         // Update the scale dynamically as the map zooms
         map.on('zoom', () => {
