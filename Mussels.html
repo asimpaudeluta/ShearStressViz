@@ -3,9 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mussel Shear Stress Visualization</title>
+    <title>Joey's Visualizations</title>
     <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
     <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet">
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
     <style>
         body { margin: 0; padding: 0; height: 100vh; }
         #map { width: 100%; height: 100%; }
@@ -27,7 +28,7 @@
             background-color: rgba(255, 255, 255, 0.8);
             padding: 10px;
             border-radius: 4px;
-            width: 30%;
+            width: 20%;
         }
         #slider-container {
             position: absolute;
@@ -47,7 +48,7 @@
     </style>
 </head>
 <body>
-    <div id="header">Mussel Shear Stress Visualization</div>
+    <div id="header">Mussel Concentration Vs Shear Stress Visualization</div>
     <div id="map"></div>
     <div id="legend">
         <img src="Raster_files_for_Shear_Stress/legend.png" alt="Legend" style="width: 100%;">
@@ -62,13 +63,11 @@
 
         // Initialize Map
         const map = new mapboxgl.Map({
-    container: 'map',
-    style: 'mapbox://styles/mapbox/light-v10',
-    center: [-95, 38],
-    zoom: 4,
-    antialias: true, // Improves rendering for complex layers
-    preserveDrawingBuffer: true // Ensures rendering consistency
-}});
+            container: 'map',
+            style: 'mapbox://styles/mapbox/light-v10',
+            center: [-95, 38],
+            zoom: 4,
+        });
 
         let currentRasterSource = null;
         let currentRasterLayer = null;
@@ -165,16 +164,14 @@
                 }
 
                 // Add the first raster layer
-                
-
-$1
+                map.on('load', () => {
                     addRasterLayer(rasterFiles[0]);
                     filenameDisplay.textContent = rasterFiles[0].tif.replace('.tif', '');
 
                     // Add shapefile layers here (after raster layers to ensure they appear on top)
                     map.addSource('studyArea', {
                         type: 'geojson',
-                        data: 'http://localhost:8000/studyarea/Study_Area.geojson',
+                        data: './studyarea/Study_Area.geojson',
                     });
 
                     map.addLayer({
@@ -190,7 +187,7 @@ $1
 
                     map.addSource('musselLocations', {
                         type: 'geojson',
-                        data: 'http://localhost:8000/Mussel_Location/Mussel_Location.geojson',
+                        data: './Mussel_Location/Mussel_Location.geojson',
                     });
 
                     map.addLayer({
@@ -228,7 +225,7 @@ $1
             maxWidth: 200,
             unit: 'metric'
         });
-        map.addControl(scale);
+        map.addControl(scale, 'bottom-left');
 
         // Update the scale dynamically as the map zooms
         map.on('zoom', () => {
